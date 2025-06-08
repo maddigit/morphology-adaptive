@@ -1,0 +1,6 @@
+{
+  "vertex_key_size": 2,
+  "vertex_value_size": 4,
+  "muscle_key_size": 2,
+  "num_heads": 20
+}

@@ -1,0 +1,156 @@
+name: trajectory-attn
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      steps:
+        required: false
+        default: 300
+      policy:
+        required: false
+        default: 'data/policies/attn'
+      frame_size:
+        required: false
+        default: 300
+
+env:
+  ALGOVIVO_REF: '4d3abd72c43d9d680d1514d9b24b042ef9e46a8f'
+  ALGOVIVO_BUILD_REF: '02041c91eb67142fe1a08e10944e214a872d44db'
+
+jobs:
+  generate-trajectory:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        agent: [biped, quadruped]
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v4
+
+      - name: Clone algovivo repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'juniorrojas/algovivo'
+          ref: '${{ env.ALGOVIVO_REF }}'
+          path: algovivo.repo
+      
+      - name: Clone algovivo build repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'juniorrojas/algovivo'
+          ref: '${{ env.ALGOVIVO_BUILD_REF }}'
+          path: algovivo.build.repo
+      
+      - run: |
+          cp -r algovivo.build.repo/build ./build
+          cp -r algovivo.build.repo/build algovivo.repo/build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - run: pip install -r requirements.txt
+
+      - name: Generate trajectory
+        run: |
+          export PYTHONPATH=.:algovivo.repo/utils/py
+          python scripts/generate_trajectory_with_attn_policy.py \
+            --agent data/agents/${{ matrix.agent }} \
+            --steps ${{ github.event.inputs.steps || 30 }} \
+            --policy ${{ github.event.inputs.policy || 'data/policies/attn' }}
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install ffmpeg
+
+      - run: |
+          cd algovivo.repo
+          npm ci
+          cd ..
+          node algovivo.repo/utils/trajectory/renderTrajectory.js \
+            --mesh trajectory_attn.out/mesh.json \
+            --steps trajectory_attn.out/steps \
+            --width ${{ github.event.inputs.frame_size || 300 }} \
+            --height ${{ github.event.inputs.frame_size || 300 }}
+      
+      - name: Make video
+        run: |
+          ffmpeg \
+            -framerate 30 \
+            -i frames.out/%d.png \
+            -c:v libx264 \
+            -profile:v high \
+            -crf 20 \
+            -pix_fmt yuv420p \
+            video_${{ matrix.agent }}.mp4
+
+      - name: Upload frames
+        uses: actions/upload-artifact@v4
+        with:
+          path: frames.out
+          name: trajectory-${{ matrix.agent }}-frames
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          path: video_${{ matrix.agent }}.mp4
+          name: trajectory-${{ matrix.agent }}-video
+
+  merge-trajectories:
+    runs-on: ubuntu-latest
+    needs: generate-trajectory
+    steps:
+      - name: Download biped frames
+        uses: actions/download-artifact@v4
+        with:
+          name: trajectory-biped-frames
+          path: frames-biped
+
+      - name: Download quadruped frames
+        uses: actions/download-artifact@v4
+        with:
+          name: trajectory-quadruped-frames
+          path: frames-quadruped
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install ffmpeg
+
+      - name: Make video
+        run: |
+          ffmpeg \
+            -framerate 30 \
+            -i "frames-biped/%d.png" \
+            -framerate 30 \
+            -i "frames-quadruped/%d.png" \
+            -filter_complex "[0:v]pad=iw+2:color=black[left];[left][1:v]hstack=inputs=2" \
+            -c:v libx264 \
+            -profile:v high \
+            -crf 20 \
+            -pix_fmt yuv420p \
+            -r 30 \
+            -y \
+            merged.mp4
+
+      - name: Upload merged video
+        uses: actions/upload-artifact@v4
+        with:
+          path: merged.mp4
+          name: video
