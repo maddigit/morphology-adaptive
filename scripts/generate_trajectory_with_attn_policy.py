@@ -85,7 +85,7 @@ if __name__ == "__main__":
         a0 = system.muscles.a.detach().tolist()
         
         # run policy (pos, vel) -> da
-        policy_input, projected_pos, projected_vel = attn.project_pos_vel(
+        _, projected_pos, projected_vel = attn.project_pos_vel(
             system.vertices.pos, system.vertices.vel,
             center_vertex_id, forward_vertex_id
         )
