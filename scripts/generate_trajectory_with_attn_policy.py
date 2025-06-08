@@ -76,8 +76,6 @@ if __name__ == "__main__":
     with open(traj_output_dirpath.joinpath("mesh.json"), "w") as f:
         json.dump(mesh_data, f)
 
-    policy_input = torch.empty(num_vertices * 4, dtype=torch.float32)
-
     for i in range(args.steps):
         print(i)
 
@@ -86,20 +84,19 @@ if __name__ == "__main__":
         vel0 = system.vertices.vel.detach().tolist()
         a0 = system.muscles.a.detach().tolist()
         
-        # run policy
+        # run policy (pos, vel) -> da
         policy_input, projected_pos, projected_vel = attn.project_pos_vel(
             system.vertices.pos, system.vertices.vel,
             center_vertex_id, forward_vertex_id
         )
-
         batch_size = 1
         assert vertex_keys.shape == (batch_size, num_vertices, 2)
         vertex_values = torch.cat([projected_pos, projected_vel], dim=1).unsqueeze(0)
         assert vertex_values.shape == (batch_size, num_vertices, 4)
-
-        # update a
         da = model(vertex_keys, muscle_k, vertex_values)
         da = da.clamp(min=-max_abs_da, max=max_abs_da)[0]
+
+        # update a with da
         system.muscles.a += da
         system.muscles.a.clamp_(min=min_a, max=1)
 
