@@ -96,13 +96,22 @@ if __name__ == "__main__":
         system.muscles.a += da
         system.muscles.a.clamp_(min=min_a, max=1)
 
-        with open(steps_dirpath.joinpath(f"{i}.json"), "w") as f:
-            json.dump({
-                "pos0": system.vertices.pos.detach().tolist(),
-                "vel0": system.vertices.vel.detach().tolist(),
-                "a0": system.muscles.a.detach().tolist()
-            }, f)
+        pos0 = system.vertices.pos.detach()
+        vel0 = system.vertices.vel.detach()
+        a0 = system.muscles.a.detach()
         
         system.step()
+
+        pos1 = system.vertices.pos.detach()
+        vel1 = system.vertices.vel.detach()
+
+        with open(steps_dirpath.joinpath(f"{i}.json"), "w") as f:
+            json.dump({
+                "pos0": pos0,
+                "vel0": vel0
+                "a0": a0,
+                "pos1": pos1,
+                "vel1": vel1
+            }, f)
 
     print(f"trajectory saved to {traj_output_dirpath}")
