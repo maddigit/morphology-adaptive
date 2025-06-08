@@ -108,7 +108,7 @@ if __name__ == "__main__":
         with open(steps_dirpath.joinpath(f"{i}.json"), "w") as f:
             json.dump({
                 "pos0": pos0,
-                "vel0": vel0
+                "vel0": vel0,
                 "a0": a0,
                 "pos1": pos1,
                 "vel1": vel1
