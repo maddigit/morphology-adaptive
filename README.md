@@ -4,7 +4,11 @@ This repository demonstrates how a single locomotion controller can work with di
 
 **More details will be available in an upcoming paper.**
 
-![](media/anim.gif)
+<a href="https://www.youtube.com/watch?v=gmgyFIJz9ZY">
+  <img src="media/anim.gif">
+</a>
+
+View animation in higher quality [here](https://www.youtube.com/watch?v=gmgyFIJz9ZY).
 
 For simulation, this repository uses [Algovivo](https://github.com/juniorrojas/algovivo), originally built for the browser using WebAssembly, but here a native build is used to enable PyTorch integration.
 
