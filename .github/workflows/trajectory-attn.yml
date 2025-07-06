@@ -48,7 +48,7 @@ jobs:
           path: algovivo.build.repo
       
       - run: |
-          cp -r algovivo.build.repo/build ./build
+          cp -r algovivo.build.repo/build build
           cp -r algovivo.build.repo/build algovivo.repo/build
 
       - name: Set up Python
